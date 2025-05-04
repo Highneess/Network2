@@ -146,20 +146,17 @@ void A_input(struct pkt packet)
 /* called when A's timer goes off */
 void A_timerinterrupt(void)
 {
-  int i;
-
-  if (TRACE > 0)
-    printf("----A: time out,resend packets!\n");
-
-  for(i=0; i<windowcount; i++) {
-
     if (TRACE > 0)
-      printf ("---A: resending packet %d\n", (buffer[(windowfirst+i) % WINDOWSIZE]).seqnum);
+        printf("----A: time out, resend packets!\n");
 
-    tolayer3(A,buffer[(windowfirst+i) % WINDOWSIZE]);
-    packets_resent++;
-    if (i==0) starttimer(A,RTT);
-  }
+    if(TRACE > 0)
+        printf("---A: resending packet %d\n", buffer[windowfirst].seqnum);
+
+    tolayer3(A, buffer[windowfirst]); // Resend the first packet in the window
+    packets_resent++; // Increment resend count
+
+    if(windowcount > 0)
+        starttimer(A, RTT); // Restart the timer
 }
 
 
