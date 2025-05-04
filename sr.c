@@ -172,69 +172,51 @@ static int expectedseqnum;
 static struct pkt recvpkt[SEQSPACE]; 
 static bool received[SEQSPACE]; 
 
+// Handle received packets
 void B_input(struct pkt packet)
 {
-  struct pkt sendpkt;
-  int i;
+    struct pkt sendpkt; 
+    int i;
+    if ((!IsCorrupted(packet)))
+    {
+        if (TRACE > 0)
+            printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
+        packets_received++; 
+        if(received[packet.seqnum] == false)
+        {
+            received[packet.seqnum] = true; 
+            // Copy the payload of the packet
+            for(i = 0; i < 20; i++)
+                recvpkt[packet.seqnum].payload[i] = packet.payload[i];
+        }
 
-  /* if not corrupted and received packet is in order */
-  if  ( (!IsCorrupted(packet))  && (packet.seqnum == expectedseqnum) ) {
-    if (TRACE > 0)
-      printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
-    packets_received++;
+        while(received[expectedseqnum] == true)
+        {
+            tolayer5(B, recvpkt[expectedseqnum].payload);
+            received[expectedseqnum] = false; 
+            expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
+        }
 
-    /* deliver to receiving application */
-    tolayer5(B, packet.payload);
+        // Prepare to send ACK
+        sendpkt.acknum = packet.seqnum; 
+        sendpkt.seqnum = NOTINUSE;
+        for(i = 0; i < 20; i++)
+            sendpkt.payload[i] = '0';
 
-    /* send an ACK for the received packet */
-    sendpkt.acknum = expectedseqnum;
+        sendpkt.checksum = ComputeChecksum(sendpkt);
 
-    /* update state variables */
-    expectedseqnum = (expectedseqnum + 1) % SEQSPACE;
-  }
-  else {
-    /* packet is corrupted or out of order resend last ACK */
-    if (TRACE > 0)
-      printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
-    if (expectedseqnum == 0)
-      sendpkt.acknum = SEQSPACE - 1;
-    else
-      sendpkt.acknum = expectedseqnum - 1;
-  }
-
-  /* create packet */
-  sendpkt.seqnum = B_nextseqnum;
-  B_nextseqnum = (B_nextseqnum + 1) % 2;
-
-  /* we don't have any data to send.  fill payload with 0's */
-  for ( i=0; i<20 ; i++ )
-    sendpkt.payload[i] = '0';
-
-  /* computer checksum */
-  sendpkt.checksum = ComputeChecksum(sendpkt);
-
-  /* send out packet */
-  tolayer3 (B, sendpkt);
+        tolayer3(B, sendpkt); 
+    }
 }
 
-/* the following routine will be called once (only) before any other */
-/* entity B routines are called. You can use it to do any initialization */
+// Initialize the receiver
 void B_init(void)
 {
-  expectedseqnum = 0;
-  B_nextseqnum = 1;
+    expectedseqnum = 0; // Set the expected sequence number to 0
 }
-
-/******************************************************************************
- * The following functions need be completed only for bi-directional messages *
- *****************************************************************************/
-
-/* Note that with simplex transfer from a-to-B, there is no B_output() */
 void B_output(struct msg message)
 {
 }
-
-/* called when B's timer goes off */
 void B_timerinterrupt(void)
 {
 }
