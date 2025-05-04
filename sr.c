@@ -158,32 +158,20 @@ void A_timerinterrupt(void)
     if(windowcount > 0)
         starttimer(A, RTT); // Restart the timer
 }
-
-
-
-/* the following routine will be called once (only) before any other */
-/* entity A routines are called. You can use it to do any initialization */
+// Initialize the sender
 void A_init(void)
 {
-  /* initialise A's window, buffer and sequence number */
-  A_nextseqnum = 0;  /* A starts with seq num 0, do not change this */
-  windowfirst = 0;
-  windowlast = -1;   /* windowlast is where the last packet sent is stored.
-		     new packets are placed in winlast + 1
-		     so initially this is set to -1
-		   */
-  windowcount = 0;
+    A_nextseqnum = 0; 
+    windowfirst = 0;
+    windowlast = -1;
+    windowcount = 0; 
 }
 
+// Variables related to the receiver
+static int expectedseqnum; 
+static struct pkt recvpkt[SEQSPACE]; 
+static bool received[SEQSPACE]; 
 
-
-/********* Receiver (B)  variables and procedures ************/
-
-static int expectedseqnum; /* the sequence number expected next by the receiver */
-static int B_nextseqnum;   /* the sequence number for the next packets sent by B */
-
-
-/* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
 {
   struct pkt sendpkt;
